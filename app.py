@@ -4,48 +4,52 @@ import streamlit as st
 # CONFIGURAÇÃO DA PÁGINA
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Sistema Especialista de Decisão Zootécnica & Lucro Bovino",
+    page_title="Estratégia Perfeita de Recria e Engorda Bovino",
     page_icon="🐂",
     layout="wide",
 )
 
-st.title("🐂 Sistema Especialista de Decisão Zootécnica & Lucro")
+st.title("🐂 Sistema Especialista de Matriz Nutricional (Seca vs. Águas)")
 st.caption(
-    "Determinação matemática de dieta, análise de ágio, recomendação de ração e projeção de carcaça."
+    "Planejamento Zootécnico e Econômico Infalível por Peso, Raça e Estação do Ano"
 )
 
 # ---------------------------------------------------------
-# 1. ENTRADAS: LOCALIZAÇÃO, MERCADO, ANIMAL E PESO
+# 1. PAINEL LATERAL: ENTRADAS OBRIGATÓRIAS
 # ---------------------------------------------------------
-st.sidebar.header("📍 Localização & Época")
-estado = st.sidebar.selectbox(
-    "Estado:",
-    [
-        "Goiás (GO)",
-        "Mato Grosso (MT)",
-        "Mato Grosso do Sul (MS)",
-        "Minas Gerais (MG)",
-        "São Paulo (SP)",
-    ],
+st.sidebar.header("🗓️ 1. Estação do Ano (Determinante)")
+epoca_ano = st.sidebar.radio(
+    "Selecione a Época do Ano Atual/Planejada:",
+    ["Seca / Transição (Capim Seco)", "Águas (Capim Verde e Nutritivo)"],
 )
-epoca_ano = st.sidebar.radio("Época do Ano:", ["Seca / Transição", "Águas (Chuva)"])
 
 st.sidebar.divider()
-st.sidebar.header("💵 Mercado & Cotações (R$)")
+st.sidebar.header("🧪 2. Perfil dos Insumos")
+nucleo_com_ureia = st.sidebar.checkbox(
+    "O Núcleo/Concentrado que utilizo JÁ TEM UREIA?",
+    value=False,
+    help="Se ativado, cancela a inclusão de ureia extra para evitar intoxicação.",
+)
+
+st.sidebar.divider()
+st.sidebar.header("💵 3. Mercado & Arroba (R$)")
 preco_arroba_compra = st.sidebar.number_input(
-    "Preço da Arroba de COMPRA (Magro/Bezerro) - R$:", value=280.0, step=5.0
+    "Preço da Arroba de COMPRA (R$):", value=280.0, step=5.0
 )
 preco_arroba_venda = st.sidebar.number_input(
-    "Preço da Arroba de VENDA (Gordo Projetado) - R$:", value=245.0, step=5.0
+    "Preço da Arroba de VENDA (R$):", value=245.0, step=5.0
 )
 
-st.header("1. Informações do Animal")
+# ---------------------------------------------------------
+# 2. INFORMÇÕES DO ANIMAL
+# ---------------------------------------------------------
+st.header("1. Perfil do Rebanho e Peso Atual")
 
-c_raca, c_peso, c_qtd = st.columns(3)
+col_raca, col_peso, col_qtd = st.columns(3)
 
-with c_raca:
+with col_raca:
     raca = st.selectbox(
-        "Selecione a Raça ou Cruzamento:",
+        "Raça ou Cruzamento:",
         [
             "Nelore (Zebuíno)",
             "Cruzamento Industrial (Angus x Nelore)",
@@ -55,16 +59,16 @@ with c_raca:
         ],
     )
 
-with c_peso:
+with col_peso:
     peso_atual = st.number_input(
         "Peso Atual do Animal (kg/cabeça):",
-        min_value=100.0,
+        min_value=120.0,
         max_value=750.0,
         value=320.0,
         step=5.0,
     )
 
-with c_qtd:
+with col_qtd:
     qtd_cabecas = st.number_input(
         "Tamanho do Lote (Cabeças):", min_value=1, value=100, step=10
     )
@@ -72,204 +76,173 @@ with c_qtd:
 st.divider()
 
 # ---------------------------------------------------------
-# 2. MOTOR DE DECISÃO ZOOTÉCNICA (100% LÓGICO E DETERMINÍSTICO)
+# 3. MATRIZ INFALÍVEL DE ESTRATÉGIA (SECA VS ÁGUAS X PESO)
 # ---------------------------------------------------------
 
-# A) Definição Automática da Fase e Estratégia de Alimentação pelo Peso
+eh_seca = "Seca" in epoca_ano
+
+# Define Fase Zootécnica, Estratégia Recomendada e Taxa de Consumo (% do Peso Vivo)
 if peso_atual < 260.0:
-    fase_atual = "Desmama / Recria Inicial"
-    tipo_alimento = (
-        "Proteinado de Seca (0,25% PV)"
-        if "Seca" in epoca_ano
-        else "Proteinado Energético de Águas (0,35% PV)"
-    )
+    fase_atual = "Desmama / Recria Inicial (Bezerro)"
+    if eh_seca:
+        estrategia_nome = "Proteinado de Seca (0,25% PV)"
+        tx_pv = 0.0025
+        gmd_base = 0.500
+    else:
+        estrategia_nome = "Proteinado Energético de Águas (0,35% PV)"
+        tx_pv = 0.0035
+        gmd_base = 0.850
+    peso_meta = 390.0
+
 elif 260.0 <= peso_atual < 390.0:
-    fase_atual = "Recria Intermediária / Crescimento"
-    tipo_alimento = (
-        "Proteinado Energético (0,5% PV)"
-        if "Seca" in epoca_ano
-        else "Suplemento de Recria Intensiva (0,8% PV)"
-    )
-else:
-    fase_atual = "Terminação / Engorda"
-    tipo_alimento = "Ração de Confinamento / TIP (1,5% a 2,0% PV)"
+    fase_atual = "Recria Intermediária (Garrote/Boi Magro)"
+    if eh_seca:
+        estrategia_nome = "Proteinado Energético de Seca (0,5% PV)"
+        tx_pv = 0.0050
+        gmd_base = 0.750
+    else:
+        estrategia_nome = "Recria Intensiva a Pasto - TIP Recria (0,8% PV)"
+        tx_pv = 0.0080
+        gmd_base = 1.100
+    peso_meta = 420.0
 
-# B) Definição de Ganho Médio Diário (GMD), Rendimento e Peso de Abate pela Raça
+else:
+    fase_atual = "Terminação / Engorda Final"
+    if eh_seca:
+        estrategia_nome = "Confinamento Tradicional ou PFT (1,8% a 2,1% PV)"
+        tx_pv = 0.0190
+        gmd_base = 1.500
+    else:
+        estrategia_nome = "Terminação Intensiva a Pasto - TIP (1,2% a 1,5% PV)"
+        tx_pv = 0.0135
+        gmd_base = 1.350
+    peso_meta = 540.0 if "Nelore" in raca else 570.0
+
+# Eficiência da Raça
 if "Angus" in raca:
-    fator_gmd = 1.18
-    rend_carcaca = 55.5
-    peso_abate_ideal = 560.0
+    fator_raca, rend_carcaca = 1.18, 55.5
 elif "Senepol" in raca or "Brangus" in raca:
-    fator_gmd = 1.10
-    rend_carcaca = 54.5
-    peso_abate_ideal = 540.0
+    fator_raca, rend_carcaca = 1.10, 54.5
 elif "Nelore" in raca:
-    fator_gmd = 1.00
-    rend_carcaca = 54.0
-    peso_abate_ideal = 530.0
+    fator_raca, rend_carcaca = 1.00, 54.0
 elif "Anelorado" in raca:
-    fator_gmd = 0.92
-    rend_carcaca = 52.5
-    peso_abate_ideal = 510.0
-else:  # Misto / Leiteiro
-    fator_gmd = 0.80
-    rend_carcaca = 50.5
-    peso_abate_ideal = 480.0
-
-# Ajuste de GMD pelo Tipo de Alimentação Recomendado
-if "Sal Mineral" in tipo_alimento:
-    gmd_base = 0.350
-elif "Proteinado de Seca" in tipo_alimento:
-    gmd_base = 0.500
-elif "Proteinado Energético" in tipo_alimento:
-    gmd_base = 0.800
-elif "Recria Intensiva" in tipo_alimento:
-    gmd_base = 1.050
-else:  # Confinamento / TIP
-    gmd_base = 1.450
-
-gmd_calculado = round(gmd_base * fator_gmd, 3)
-
-# Se o animal já estiver em terminação, a meta é o peso ideal de abate; na recria, é a transição
-if peso_atual >= 390.0:
-    peso_saida_meta = max(peso_abate_ideal, peso_atual + 60.0)
+    fator_raca, rend_carcaca = 0.92, 52.5
 else:
-    peso_saida_meta = 410.0  # Meta para finalizar a recria e entrar na engorda
+    fator_raca, rend_carcaca = 0.80, 50.5
 
-ganho_necessario = peso_saida_meta - peso_atual
-dias_necessarios = (
-    ganho_necessario / gmd_calculado if gmd_calculado > 0 else 0
+gmd_final = round(gmd_base * fator_raca, 3)
+ganho_necessario = peso_meta - peso_atual
+dias_permanencia = round(
+    ganho_necessario / gmd_final if gmd_final > 0 else 0
 )
 
 # ---------------------------------------------------------
-# 3. ANÁLISE ECONÔMICA, ÁGIO E VALOR DE REVENDA
+# 4. DIAGNÓSTICO FINANCEIRO & ANÁLISE DE ÁGIO
 # ---------------------------------------------------------
 arrobas_entrada = peso_atual / 30.0
-custo_aquisicao_cabeca = arrobas_entrada * preco_arroba_compra
+custo_compra_cab = arrobas_entrada * preco_arroba_compra
+arrobas_saida = (peso_meta * (rend_carcaca / 100.0)) / 15.0
+receita_venda_cab = arrobas_saida * preco_arroba_venda
 
-arrobas_saida = (peso_saida_meta * (rend_carcaca / 100.0)) / 15.0
-receita_bruta_cabeca = arrobas_saida * preco_arroba_venda
-
-agio_reais = preco_arroba_compra - preco_arroba_venda
 agio_pct = ((preco_arroba_compra / preco_arroba_venda) - 1) * 100
 
-if agio_pct <= 10.0:
-    status_agio = "🟢 EXCELENTE COMPENSAÇÃO (Margem Alta)"
-    diagnostico_viabilidade = "COMPENSA MUITO! O custo da arroba comprada está alinhado com o preço de venda. O ganho de peso gerará lucro rápido."
-elif 10.0 < agio_pct <= 18.0:
-    status_agio = "🟡 COMPENSA COM EFICIÊNCIA (Margem Moderada)"
-    diagnostico_viabilidade = "COMPENSA, desde que você utilize a ração de alta performance formulada abaixo para diluir o ágio no ganho de arrobas no pasto/cocho."
-else:
-    status_agio = "🔴 ALTO ÁGIO (Risco Elevado)"
-    diagnostico_viabilidade = "NÃO COMPENSA COMPRAR NESTE PREÇO sem negociação de desconto, pois o valor pago na carcaça de entrada exige um custo de ração extremamente baixo para não dar prejuízo."
+st.header("2. Veredito Estratégico & Análise Econômica")
 
-# Exibição do Diagnóstico
-st.header("2. Diagnóstico de Viabilidade, Ágio e Retorno Financeiro")
+col_v1, col_v2 = st.columns([1.5, 1])
 
-st.markdown(f"### **Status:** {status_agio}")
-st.write(f"👉 **Parecer Técnico:** {diagnostico_viabilidade}")
+with col_v1:
+    st.subheader(f"📌 Estratégia Definida: **{estrategia_nome}**")
+    st.write(f"• **Estação Detectada:** {'☀️ **SECA** (Foco em Proteína / Ureia)' if eh_seca else '🌧️ **ÁGUAS** (Foco em Amido / Energia)'}")
+    st.write(f"• **Fase Zootécnica:** {fase_atual}")
+    st.write(f"• **Ganho Diário Projetado (GMD):** `{gmd_final:.3f} kg/dia`")
+    st.write(f"• **Tempo Exato do Lote:** `{dias_permanencia} dias` ({dias_permanencia/30:.1f} meses)")
 
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("Ágio da Arroba (%)", f"{agio_pct:.1f}%")
-m2.metric("Valor Estimado de Compra", f"R$ {custo_aquisicao_cabeca:.2f}")
-m3.metric("Arrobas Finais (@)", f"{arrobas_saida:.2f} @")
-m4.metric("Valor de Revenda Projetado", f"R$ {receita_bruta_cabeca:.2f}")
+with col_v2:
+    if agio_pct <= 10.0:
+        st.success(f"🟢 **ÁGIO BAIXO ({agio_pct:.1f}%):** Negócio muito rentável. O ganho de peso paga a operação rápido.")
+    elif agio_pct <= 18.0:
+        st.warning(f"🟡 **ÁGIO MODERADO ({agio_pct:.1f}%):** Compensa desde que mantenha a ração ajustada sem desperdício.")
+    else:
+        st.error(f"🔴 **ÁGIO ALTO ({agio_pct:.1f}%):** Risco elevado. Exige ganho de peso acelerado para diluir a compra.")
+
+    st.metric("Arrobas Finais Projetadas", f"{arrobas_saida:.2f} @")
+    st.metric("Faturamento Estimado/Cabeça", f"R$ {receita_venda_cab:.2f}")
 
 st.divider()
 
 # ---------------------------------------------------------
-# 4. PRESCRIÇÃO NUTRICIONAL E FORMULAÇÃO DA MELHOR RAÇÃO
+# 5. FORMULAÇÃO MATEMÁTICA DA RAÇÃO
 # ---------------------------------------------------------
-st.header("3. Prescrição de Nutrição e Formulação Própria da Ração")
+st.header("3. Receita Exata para Fabricar na Fazenda (Por 100 kg)")
 
-st.info(
-    f"📌 **Fase Detectada:** {fase_atual} | **Estratégia Recomendada:** {tipo_alimento}"
+
+def gerar_formula_perfeita(eh_seca_flag, fase, com_ureia):
+    if eh_seca_flag:
+        if "Desmama" in fase:
+            milho, soja, ureia, nucleo = 50.0, 28.0, 7.0, 15.0
+            desc = "Proteinado de Seca: Mantém o rume ativo na palhada sem perda de peso."
+        elif "Recria" in fase:
+            milho, soja, ureia, nucleo = 65.0, 20.0, 5.0, 10.0
+            desc = "Proteinado Energético de Seca: Estimula o crescimento de carcaça na palhada seca."
+        else:
+            milho, soja, ureia, nucleo = 75.0, 17.0, 2.0, 6.0
+            desc = "Ração de Confinamento na Seca: Alta densidade de amido para terminação rápida."
+    else:  # ÁGUAS
+        if "Desmama" in fase:
+            milho, soja, ureia, nucleo = 72.0, 16.0, 0.0, 12.0
+            desc = "Proteinado de Águas: Amido para aproveitar o excesso de proteína do capim verde."
+        elif "Recria" in fase:
+            milho, soja, ureia, nucleo = 78.0, 14.0, 1.0, 7.0
+            desc = "Ração de TIP Recria: Impulsiona o ganho diário para antecipar o abate."
+        else:
+            milho, soja, ureia, nucleo = 80.0, 13.0, 1.0, 6.0
+            desc = "Ração TIP Terminação nas Águas: Acabamento perfeito de gordura no pasto verde."
+
+    if com_ureia and ureia > 0:
+        soja += round(ureia * 1.5, 1)
+        milho -= round(ureia * 0.5, 1)
+        ureia = 0.0
+
+    dict_f = {
+        "Milho Moído Fino (Fubá)": milho,
+        "Farelo de Soja 46%": soja,
+    }
+    if ureia > 0:
+        dict_f["Ureia Pecuária + Sulfato de Amônio (9:1)"] = ureia
+    dict_f["Núcleo Mineral / Tampão"] = nucleo
+
+    return dict_f, desc
+
+
+formula_dict, orientacao = gerar_formula_perfeita(
+    eh_seca, fase_atual, nucleo_com_ureia
 )
 
+consumo_dia_cab = peso_atual * tx_pv
+consumo_dia_lote = consumo_dia_cab * qtd_cabecas
+consumo_total_ton = (consumo_dia_lote * dias_permanencia) / 1000.0
 
-def calcular_formula_racao(estratégia, peso_in):
-    if "Proteinado de Seca" in estratégia:
-        tx_pv = 0.0025
-        formula = {
-            "Milho Moído Fino (Fubá/Xerém)": 50.0,
-            "Farelo de Soja 46%": 28.0,
-            "Ureia Pecuária + Sulfato de Amônio (9:1)": 7.0,
-            "Sal Mineral / Núcleo Proteinado": 15.0,
-        }
-        resumo = "Proteinado concentrado para manter o ganho na seca sem perda de peso."
+m_c1, m_c2, m_c3 = st.columns(3)
+m_c1.metric("Consumo/Cabeça/Dia", f"{consumo_dia_cab:.2f} kg")
+m_c2.metric("Consumo do Lote/Dia", f"{consumo_dia_lote:.1f} kg")
+m_c3.metric("Ração Total no Período", f"{consumo_total_ton:.2f} Toneladas")
 
-    elif "Proteinado Energético" in estratégia:
-        tx_pv = 0.005
-        formula = {
-            "Milho Moído Fino": 65.0,
-            "Farelo de Soja 46%": 20.0,
-            "Núcleo Mineral com Monensina": 10.0,
-            "Ureia Pecuária + Sulfato (9:1)": 5.0,
-        }
-        resumo = "Suplemento energizante para aceleração de carcaça na recria."
+st.info(f"💡 **Diretriz Tática:** {orientacao}")
 
-    elif "Recria Intensiva" in estratégia:
-        tx_pv = 0.008
-        formula = {
-            "Milho Moído Fino": 70.0,
-            "Farelo de Soja 46%": 22.0,
-            "Núcleo Mineral com Tampão": 6.0,
-            "Ureia Pecuária + Sulfato (9:1)": 2.0,
-        }
-        resumo = "Ração de alto desempenho para estruturar carcaça em tempo recorde."
+col_f1, col_f2 = st.columns([1.3, 1])
 
-    else:  # Terminação / Engorda
-        tx_pv = 0.018
-        formula = {
-            "Milho Moído Fino": 75.0,
-            "Farelo de Soja 46%": 17.0,
-            "Núcleo Confinamento (Virginiamicina + Monensina + Tampão)": 6.0,
-            "Ureia Pecuária + Sulfato (9:1)": 2.0,
-        }
-        resumo = "Ração de engorda rápida para acabamento perfeito de gordura na carcaça."
-
-    consumo_dia_cab = peso_in * tx_pv
-    consumo_dia_lote = consumo_dia_cab * qtd_cabecas
-    consumo_total_periodo_ton = (consumo_dia_lote * dias_necessarios) / 1000.0
-
-    return (
-        consumo_dia_cab,
-        consumo_dia_lote,
-        consumo_total_periodo_ton,
-        formula,
-        resumo,
-    )
-
-
-c_cabeca, c_lote_dia, c_tot_ton, formula_dict, desc_nutri = (
-    calcular_formula_racao(tipo_alimento, peso_atual)
-)
-
-r1, r2, r3, r4 = st.columns(4)
-r1.metric("GMD Projetado", f"{gmd_calculado:.3f} kg/dia")
-r2.metric("Tempo de Permanência", f"{dias_necessarios:.0f} Dias")
-r3.metric("Consumo/Cabeça/Dia", f"{c_cabeca:.2f} kg")
-r4.metric("Ração Total para o Lote", f"{c_tot_ton:.2f} Toneladas")
-
-st.markdown("#### 🥣 Receita de Ração Magnífica para Fabricar na Fazenda (Para cada 100 kg de misturador)")
-
-col_ing, col_metrica = st.columns([1.3, 1])
-
-with col_ing:
-    for ingrediente, porcentagem in formula_dict.items():
-        kg_lote_dia = (c_lote_dia * porcentagem) / 100.0
+with col_f1:
+    st.markdown("#### **Mistura em Porcentagem (Batidão de 100 kg):**")
+    for ing, pct in formula_dict.items():
+        kg_lote = (consumo_dia_lote * pct) / 100.0
         st.write(
-            f"• **{ingrediente}**: `{porcentagem:.1f}%` — **({kg_lote_dia:.1f} kg/dia para todo o lote)**"
+            f"• **{ing}**: `{pct:.1f}%` $\\rightarrow$ **({kg_lote:.1f} kg/dia para todo o lote)**"
         )
 
-with col_metrica:
+with col_f2:
     st.success(f"""
-    **Garantia Nutricional:**
-    * **Objetivo:** {desc_nutri}
-    * **Rendimento de Carcaça Estimado:** `{rend_carcaca}%`
-    * **Peso Ideal de Abate/Saída:** `{peso_saida_meta:.0f} kg`
+    **Regra de Ouro da Estação:**
+    * **Nas Águas:** O capim já entrega a proteína. A ração precisa ser **rica em Amido (Milho)**.
+    * **Na Seca:** O capim perde proteína. A ração precisa ser **rica em Nitrogênio (Ureia/Soja)**.
     """)
 
-st.warning(
-    "⚠️ **Protocolo de Adaptação Secreto:** Nos primeiros 14 dias, forneça 50% do consumo diário previsto para adaptar os microrganismos do rume à Ureia e ao Amido do milho, evitando acidose."
-)
