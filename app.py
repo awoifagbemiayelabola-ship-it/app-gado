@@ -1,114 +1,87 @@
-class CalculadoraPecuaria:
-    def __init__(self):
-        pass
+import streamlit as st
 
-    @staticmethod
-    def kg_para_arrobas_vivas(peso_kg):
-        """Converte peso vivo em kg para arrobas vivas (@)."""
-        return peso_kg / 30.0
+st.set_page_config(page_title="Calculadora Pecuária", layout="wide")
 
-    @staticmethod
-    def calcular_carcaca_kg(peso_vivo_kg, rendimento_porcentagem):
-        """Calcula o peso total de carcaça em kg."""
-        return peso_vivo_kg * (rendimento_porcentagem / 100.0)
+st.title("🐂 Calculadora Pecuária - Boi Gordo")
+st.write("Simulador de recria e confinamento para bezerros, bezerras, garrotes e novilhas.")
 
-    @staticmethod
-    def calcular_arrobas_carcaca(peso_vivo_kg, rendimento_porcentagem):
-        """Calcula a quantidade de arrobas (@) de carcaça."""
-        carcaca_kg = peso_vivo_kg * (rendimento_porcentagem / 100.0)
-        return carcaca_kg / 15.0
-
-    def funcao_recria(self, 
-                      peso_inicial_kg, 
-                      peso_final_kg, 
-                      dias_recria, 
-                      custo_aquisicao, 
-                      custo_diario_pasto_suplemento, 
-                      custo_sanidade_outros, 
-                      rendimento_carcaca_estimado=52.0):
-        """
-        FUNÇÃO 1: SIMULAÇÃO DE RECRIA (Pasto / Suplementação)
-        """
-        gmd_kg = (peso_final_kg - peso_inicial_kg) / dias_recria
-        
-        arrobas_iniciais = self.calcular_arrobas_carcaca(peso_inicial_kg, rendimento_carcaca_estimado)
-        arrobas_finais = self.calcular_arrobas_carcaca(peso_final_kg, rendimento_carcaca_estimado)
-        arrobas_ganhas = arrobas_finais - arrobas_iniciais
-        
-        custo_alimentacao_total = custo_diario_pasto_suplemento * dias_recria
-        custo_total_recria = custo_aquisicao + custo_alimentacao_total + custo_sanidade_outros
-        
-        custo_por_arroba_ganha = (custo_alimentacao_total + custo_sanidade_outros) / arrobas_ganhas if arrobas_ganhas > 0 else 0
-        break_even_arroba = custo_total_recria / arrobas_finais
-
-        return {
-            "dias_recria": dias_recria,
-            "gmd_kg_dia": round(gmd_kg, 3),
-            "arrobas_ganhas": round(arrobas_ganhas, 2),
-            "custo_total_acumulado": round(custo_total_recria, 2),
-            "custo_por_arroba_produzida": round(custo_por_arroba_ganha, 2),
-            "break_even_arroba": round(break_even_arroba, 2)
-        }
-
-    def funcao_confinamento(self, 
-                            peso_entrada_kg, 
-                            peso_meta_kg, 
-                            gmd_esperado_kg, 
-                            custo_diario_dieta, 
-                            custo_diario_operacional, 
-                            valor_aquisicao_animal, 
-                            rendimento_carcaca_estimado=54.0):
-        """
-        FUNÇÃO 2: SIMULAÇÃO DE CONFINAMENTO (Engorda Intensiva)
-        """
-        ganho_necessario_kg = peso_meta_kg - peso_entrada_kg
-        dias_cocho = ganho_necessario_kg / gmd_esperado_kg
-        
-        custo_diario_total = custo_diario_dieta + custo_diario_operacional
-        custo_cocho_total = custo_diario_total * dias_cocho
-        custo_total_animal = valor_aquisicao_animal + custo_cocho_total
-        
-        arrobas_finais = self.calcular_arrobas_carcaca(peso_meta_kg, rendimento_carcaca_estimado)
-        break_even_arroba = custo_total_animal / arrobas_finais
-
-        return {
-            "dias_de_cocho": int(round(dias_cocho)),
-            "ganho_peso_total_kg": round(ganho_necessario_kg, 2),
-            "custo_cocho_total": round(custo_cocho_total, 2),
-            "custo_total_acumulado": round(custo_total_animal, 2),
-            "arrobas_finais_carcaca": round(arrobas_finais, 2),
-            "break_even_arroba": round(break_even_arroba, 2)
-        }
-
+# Abas para navegar entre Recria e Confinamento
+aba_recria, aba_confinamento = st.tabs(["🌾 1. Recria (Pasto)", "🥩 2. Confinamento"])
 
 # ==========================================
-# EXEMPLO DE USO / TESTE DAS DUAS FUNÇÕES
+# ABA 1: RECRIA
 # ==========================================
-if __name__ == "__main__":
-    calc = CalculadoraPecuaria()
+with aba_recria:
+    st.header("Simulador de Recria")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        peso_ini_recria = st.number_input("Peso Inicial (kg)", value=200, step=10, key="rec_p_ini")
+        peso_fim_recria = st.number_input("Peso Final Projetado (kg)", value=350, step=10, key="rec_p_fim")
+        dias_recria = st.number_input("Dias de Recria", value=300, step=10, key="rec_dias")
+        custo_aquisicao = st.number_input("Custo de Aquisição (R$)", value=2200.0, step=50.0, key="rec_aq")
 
-    print("--- 1. TESTE DA FUNÇÃO RECRIA (Bezerro -> Garrote/Novilha) ---")
-    resultado_recria = calc.funcao_recria(
-        peso_inicial_kg=200,                # Peso de compra do bezerro
-        peso_final_kg=350,                  # Peso final projetado na recria
-        dias_recria=300,                    # Período de recria (dias)
-        custo_aquisicao=2200.00,            # Preço pago no bezerro (R$)
-        custo_diario_pasto_suplemento=2.50, # Custo de pasto + sal/proteinado por dia (R$)
-        custo_sanidade_outros=150.00,       # Vacinas, frete, exames (R$)
-        rendimento_carcaca_estimado=52.0    # 52% para recria
-    )
-    for chave, valor in resultado_recria.items():
-        print(f"{chave}: {valor}")
+    with col2:
+        custo_diario_pasto = st.number_input("Custo Diário - Pasto/Suplemento (R$)", value=2.50, step=0.5, key="rec_diario")
+        custo_outros_recria = st.number_input("Outros Custos - Sanidade/Frete (R$)", value=150.0, step=10.0, key="rec_outros")
+        rend_recria = st.number_input("Rendimento Carcaça Estimado (%)", value=52.0, step=0.5, key="rec_rend")
 
-    print("\n--- 2. TESTE DA FUNÇÃO CONFINAMENTO (Garrote -> Boi Gordo) ---")
-    resultado_confinamento = calc.funcao_confinamento(
-        peso_entrada_kg=380,                # Peso de entrada no cocho
-        peso_meta_kg=540,                   # Peso final desejado no abate
-        gmd_esperado_kg=1.5,                # Ganho Médio Diário no cocho (kg/dia)
-        custo_diario_dieta=14.50,           # Dieta total por cabeça/dia (R$)
-        custo_diario_operacional=2.00,      # Mão de obra, diesel, depreciação por dia (R$)
-        valor_aquisicao_animal=3500.00,     # Custo/Avaliação do garrote ao entrar no cocho (R$)
-        rendimento_carcaca_estimado=54.0    # 54% rendimento de carcaça no abate
-    )
-    for chave, valor in resultado_confinamento.items():
-        print(f"{chave}: {valor}")
+    if st.button("Calcular Recria", type="primary"):
+        # Cálculos
+        gmd = (peso_fim_recria - peso_ini_recria) / dias_recria if dias_recria > 0 else 0
+        @_iniciais = (peso_ini_recria * (rend_recria / 100)) / 15
+        @_finais = (peso_fim_recria * (rend_recria / 100)) / 15
+        @_ganhas = @_finais - @_iniciais
+        
+        custo_nutricao = custo_diario_pasto * dias_recria
+        custo_total = custo_aquisicao + custo_nutricao + custo_outros_recria
+        custo_arroba_ganha = (custo_nutricao + custo_outros_recria) / @_ganhas if @_ganhas > 0 else 0
+        break_even = custo_total / @_finais if @_finais > 0 else 0
+
+        st.markdown("---")
+        st.subheader("Resultados da Recria")
+        res1, res2, res3 = st.columns(3)
+        res1.metric("GMD Médio", f"{gmd:.3f} kg/dia")
+        res2.metric("Arrobas Ganhas", f"{@_ganhas:.2f} @")
+        res3.metric("Custo Total / Cabeça", f"R$ {custo_total:.2f}")
+
+        res4, res5 = st.columns(2)
+        res4.metric("Custo da @ Ganha", f"R$ {custo_arroba_ganha:.2f}")
+        res5.metric("Ponto de Equilíbrio (Break-Even)", f"R$ {break_even:.2f} / @")
+
+# ==========================================
+# ABA 2: CONFINAMENTO
+# ==========================================
+with aba_confinamento:
+    st.header("Simulador de Confinamento")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        peso_entrada_conf = st.number_input("Peso de Entrada (kg)", value=380, step=10, key="conf_p_ent")
+        peso_meta_conf = st.number_input("Peso Meta Abate (kg)", value=540, step=10, key="conf_p_meta")
+        gmd_conf = st.number_input("GMD Esperado (kg/dia)", value=1.50, step=0.1, key="conf_gmd")
+        valor_animal_conf = st.number_input("Valor de Entrada do Animal (R$)", value=3500.0, step=50.0, key="conf_val")
+
+    with col2:
+        custo_dieta = st.number_input("Custo Diário da Dieta (R$)", value=14.50, step=0.5, key="conf_dieta")
+        custo_operacional = st.number_input("Custo Diário Operacional (R$)", value=2.00, step=0.5, key="conf_op")
+        rend_conf = st.number_input("Rendimento Carcaça Abate (%)", value=54.0, step=0.5, key="conf_rend")
+
+    if st.button("Calcular Confinamento", type="primary"):
+        # Cálculos
+        ganho_peso = peso_meta_conf - peso_entrada_conf
+        dias_cocho = ganho_peso / gmd_conf if gmd_conf > 0 else 0
+        custo_diario_total = custo_dieta + custo_operacional
+        custo_cocho = custo_diario_total * dias_cocho
+        custo_total_conf = valor_animal_conf + custo_cocho
+        @_finais_conf = (peso_meta_conf * (rend_conf / 100)) / 15
+        break_even_conf = custo_total_conf / @_finais_conf if @_finais_conf > 0 else 0
+
+        st.markdown("---")
+        st.subheader("Resultados do Confinamento")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Dias de Cocho", f"{int(dias_cocho)} dias")
+        c2.metric("Custo Total do Cocho", f"R$ {custo_cocho:.2f}")
+        c3.metric("@ Finais de Carcaça", f"{@_finais_conf:.2f} @")
+
+        st.metric("Ponto de Equilíbrio Mínimo (Break-Even)", f"R$ {break_even_conf:.2f} / @")
