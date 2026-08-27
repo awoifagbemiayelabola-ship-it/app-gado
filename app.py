@@ -16,8 +16,8 @@ with aba_recria:
     
     col1, col2 = st.columns(2)
     with col1:
-        peso_ini_recria = st.number_input("Peso Inicial (kg)", value=200, step=10, key="rec_p_ini")
-        peso_fim_recria = st.number_input("Peso Final Projetado (kg)", value=350, step=10, key="rec_p_fim")
+        peso_ini_recria = st.number_input("Peso Inicial (kg)", value=200.0, step=10.0, key="rec_p_ini")
+        peso_fim_recria = st.number_input("Peso Final Projetado (kg)", value=350.0, step=10.0, key="rec_p_fim")
         dias_recria = st.number_input("Dias de Recria", value=300, step=10, key="rec_dias")
         custo_aquisicao = st.number_input("Custo de Aquisição (R$)", value=2200.0, step=50.0, key="rec_aq")
 
@@ -27,27 +27,29 @@ with aba_recria:
         rend_recria = st.number_input("Rendimento Carcaça Estimado (%)", value=52.0, step=0.5, key="rec_rend")
 
     if st.button("Calcular Recria", type="primary"):
-        # Cálculos
-        gmd = (peso_fim_recria - peso_ini_recria) / dias_recria if dias_recria > 0 else 0
-        @_iniciais = (peso_ini_recria * (rend_recria / 100)) / 15
-        @_finais = (peso_fim_recria * (rend_recria / 100)) / 15
-        @_ganhas = @_finais - @_iniciais
-        
-        custo_nutricao = custo_diario_pasto * dias_recria
-        custo_total = custo_aquisicao + custo_nutricao + custo_outros_recria
-        custo_arroba_ganha = (custo_nutricao + custo_outros_recria) / @_ganhas if @_ganhas > 0 else 0
-        break_even = custo_total / @_finais if @_finais > 0 else 0
+        if dias_recria <= 0:
+            st.error("O número de dias de recria deve ser maior que zero.")
+        else:
+            gmd = (peso_fim_recria - peso_ini_recria) / dias_recria
+            arrobas_iniciais = (peso_ini_recria * (rend_recria / 100)) / 15
+            arrobas_finais = (peso_fim_recria * (rend_recria / 100)) / 15
+            arrobas_ganhas = arrobas_finais - arrobas_iniciais
+            
+            custo_nutricao = custo_diario_pasto * dias_recria
+            custo_total = custo_aquisicao + custo_nutricao + custo_outros_recria
+            custo_arroba_ganha = (custo_nutricao + custo_outros_recria) / arrobas_ganhas if arrobas_ganhas > 0 else 0
+            break_even = custo_total / arrobas_finais if arrobas_finais > 0 else 0
 
-        st.markdown("---")
-        st.subheader("Resultados da Recria")
-        res1, res2, res3 = st.columns(3)
-        res1.metric("GMD Médio", f"{gmd:.3f} kg/dia")
-        res2.metric("Arrobas Ganhas", f"{@_ganhas:.2f} @")
-        res3.metric("Custo Total / Cabeça", f"R$ {custo_total:.2f}")
+            st.markdown("---")
+            st.subheader("Resultados da Recria")
+            res1, res2, res3 = st.columns(3)
+            res1.metric("GMD Médio", f"{gmd:.3f} kg/dia")
+            res2.metric("Arrobas Ganhas", f"{arrobas_ganhas:.2f} @")
+            res3.metric("Custo Total / Cabeça", f"R$ {custo_total:.2f}")
 
-        res4, res5 = st.columns(2)
-        res4.metric("Custo da @ Ganha", f"R$ {custo_arroba_ganha:.2f}")
-        res5.metric("Ponto de Equilíbrio (Break-Even)", f"R$ {break_even:.2f} / @")
+            res4, res5 = st.columns(2)
+            res4.metric("Custo da @ Ganha", f"R$ {custo_arroba_ganha:.2f}")
+            res5.metric("Ponto de Equilíbrio (Break-Even)", f"R$ {break_even:.2f} / @")
 
 # ==========================================
 # ABA 2: CONFINAMENTO
@@ -57,8 +59,8 @@ with aba_confinamento:
     
     col1, col2 = st.columns(2)
     with col1:
-        peso_entrada_conf = st.number_input("Peso de Entrada (kg)", value=380, step=10, key="conf_p_ent")
-        peso_meta_conf = st.number_input("Peso Meta Abate (kg)", value=540, step=10, key="conf_p_meta")
+        peso_entrada_conf = st.number_input("Peso de Entrada (kg)", value=380.0, step=10.0, key="conf_p_ent")
+        peso_meta_conf = st.number_input("Peso Meta Abate (kg)", value=540.0, step=10.0, key="conf_p_meta")
         gmd_conf = st.number_input("GMD Esperado (kg/dia)", value=1.50, step=0.1, key="conf_gmd")
         valor_animal_conf = st.number_input("Valor de Entrada do Animal (R$)", value=3500.0, step=50.0, key="conf_val")
 
@@ -68,20 +70,22 @@ with aba_confinamento:
         rend_conf = st.number_input("Rendimento Carcaça Abate (%)", value=54.0, step=0.5, key="conf_rend")
 
     if st.button("Calcular Confinamento", type="primary"):
-        # Cálculos
-        ganho_peso = peso_meta_conf - peso_entrada_conf
-        dias_cocho = ganho_peso / gmd_conf if gmd_conf > 0 else 0
-        custo_diario_total = custo_dieta + custo_operacional
-        custo_cocho = custo_diario_total * dias_cocho
-        custo_total_conf = valor_animal_conf + custo_cocho
-        @_finais_conf = (peso_meta_conf * (rend_conf / 100)) / 15
-        break_even_conf = custo_total_conf / @_finais_conf if @_finais_conf > 0 else 0
+        if gmd_conf <= 0:
+            st.error("O GMD Esperado deve ser maior que zero.")
+        else:
+            ganho_peso = peso_meta_conf - peso_entrada_conf
+            dias_cocho = ganho_peso / gmd_conf
+            custo_diario_total = custo_dieta + custo_operacional
+            custo_cocho = custo_diario_total * dias_cocho
+            custo_total_conf = valor_animal_conf + custo_cocho
+            arrobas_finais_conf = (peso_meta_conf * (rend_conf / 100)) / 15
+            break_even_conf = custo_total_conf / arrobas_finais_conf if arrobas_finais_conf > 0 else 0
 
-        st.markdown("---")
-        st.subheader("Resultados do Confinamento")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Dias de Cocho", f"{int(dias_cocho)} dias")
-        c2.metric("Custo Total do Cocho", f"R$ {custo_cocho:.2f}")
-        c3.metric("@ Finais de Carcaça", f"{@_finais_conf:.2f} @")
+            st.markdown("---")
+            st.subheader("Resultados do Confinamento")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Dias de Cocho", f"{int(dias_cocho)} dias")
+            c2.metric("Custo Total do Cocho", f"R$ {custo_cocho:.2f}")
+            c3.metric("@ Finais de Carcaça", f"{arrobas_finais_conf:.2f} @")
 
-        st.metric("Ponto de Equilíbrio Mínimo (Break-Even)", f"R$ {break_even_conf:.2f} / @")
+            st.metric("Ponto de Equilíbrio Mínimo (Break-Even)", f"R$ {break_even_conf:.2f} / @")
