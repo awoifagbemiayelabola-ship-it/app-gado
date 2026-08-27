@@ -1,91 +1,159 @@
-import streamlit as st
+from dataclasses import dataclass
+from typing import Dict, Any
 
-st.set_page_config(page_title="Calculadora Pecuária", layout="wide")
+@dataclass
+class RacaInfo:
+    nome: str
+    peso_recria_ideal: float       # kg
+    gmd_recria_alvo: float         # kg/dia
+    peso_confinamento_ideal: float # kg
+    gmd_confinamento_alvo: float   # kg/dia
+    suporta_recria: bool = True
 
-st.title("🐂 Calculadora Pecuária - Boi Gordo")
-st.write("Simulador de recria e confinamento para bezerros, bezerras, garrotes e novilhas.")
+# 1. BASE DE DADOS DAS RAÇAS
+BANCO_RACAS: Dict[str, RacaInfo] = {
+    "nelore": RacaInfo(
+        nome="Nelore",
+        peso_recria_ideal=400.0,
+        gmd_recria_alvo=0.700,
+        peso_confinamento_ideal=550.0,
+        gmd_confinamento_alvo=1.600
+    ),
+    "angus_f1": RacaInfo(
+        nome="Angus x Nelore (F1)",
+        peso_recria_ideal=420.0,
+        gmd_recria_alvo=0.900,
+        peso_confinamento_ideal=590.0,
+        gmd_confinamento_alvo=1.850
+    ),
+    "guzera": RacaInfo(
+        nome="Guzerá / Tabapuã",
+        peso_recria_ideal=395.0,
+        gmd_recria_alvo=0.680,
+        peso_confinamento_ideal=545.0,
+        gmd_confinamento_alvo=1.500
+    ),
+    "brangus": RacaInfo(
+        nome="Braford / Brangus",
+        peso_recria_ideal=410.0,
+        gmd_recria_alvo=0.850,
+        peso_confinamento_ideal=580.0,
+        gmd_confinamento_alvo=1.750
+    ),
+    "holandes": RacaInfo(
+        nome="Holandês / Cruzamento Lácteo",
+        peso_recria_ideal=0.0,
+        gmd_recria_alvo=0.0,
+        peso_confinamento_ideal=530.0,
+        gmd_confinamento_alvo=1.300,
+        suporta_recria=False
+    )
+}
 
-# Abas para navegar entre Recria e Confinamento
-aba_recria, aba_confinamento = st.tabs(["🌾 1. Recria (Pasto)", "🥩 2. Confinamento"])
+# 2. FUNÇÕES DE CÁLCULO DA REGRA DE NEGÓCIO
 
-# ==========================================
-# ABA 1: RECRIA
-# ==========================================
-with aba_recria:
-    st.header("Simulador de Recria")
+def calcular_agio(preco_compra_arroba: float, preco_venda_arroba: float) -> dict:
+    """Calcula a porcentagem de ágio e avalia o risco."""
+    agio_pct = ((preco_compra_arroba - preco_venda_arroba) / preco_venda_arroba) * 100
     
-    col1, col2 = st.columns(2)
-    with col1:
-        peso_ini_recria = st.number_input("Peso Inicial (kg)", value=200.0, step=10.0, key="rec_p_ini")
-        peso_fim_recria = st.number_input("Peso Final Projetado (kg)", value=350.0, step=10.0, key="rec_p_fim")
-        dias_recria = st.number_input("Dias de Recria", value=300, step=10, key="rec_dias")
-        custo_aquisicao = st.number_input("Custo de Aquisição (R$)", value=2200.0, step=50.0, key="rec_aq")
+    if agio_pct <= 10.0:
+        status = "EXCELENTE"
+        mensagem = "Ágio baixo. Alta viabilidade financeira para o ganho de peso."
+    elif 10.0 < agio_pct <= 20.0:
+        status = "ATENÇÃO"
+        mensagem = "Ágio moderado. Monitorar rigorosamente o custo da diária alimentar."
+    else:
+        status = "ALTO RISCO"
+        mensagem = "Ágio elevado! O custo do GMD precisará ser muito baixo para cobrir o valor de compra."
+        
+    return {
+        "agio_porcentagem": round(agio_pct, 2),
+        "status": status,
+        "mensagem": mensagem
+    }
 
-    with col2:
-        custo_diario_pasto = st.number_input("Custo Diário - Pasto/Suplemento (R$)", value=2.50, step=0.5, key="rec_diario")
-        custo_outros_recria = st.number_input("Outros Custos - Sanidade/Frete (R$)", value=150.0, step=10.0, key="rec_outros")
-        rend_recria = st.number_input("Rendimento Carcaça Estimado (%)", value=52.0, step=0.5, key="rec_rend")
-
-    if st.button("Calcular Recria", type="primary"):
-        if dias_recria <= 0:
-            st.error("O número de dias de recria deve ser maior que zero.")
-        else:
-            gmd = (peso_fim_recria - peso_ini_recria) / dias_recria
-            arrobas_iniciais = (peso_ini_recria * (rend_recria / 100)) / 15
-            arrobas_finais = (peso_fim_recria * (rend_recria / 100)) / 15
-            arrobas_ganhas = arrobas_finais - arrobas_iniciais
-            
-            custo_nutricao = custo_diario_pasto * dias_recria
-            custo_total = custo_aquisicao + custo_nutricao + custo_outros_recria
-            custo_arroba_ganha = (custo_nutricao + custo_outros_recria) / arrobas_ganhas if arrobas_ganhas > 0 else 0
-            break_even = custo_total / arrobas_finais if arrobas_finais > 0 else 0
-
-            st.markdown("---")
-            st.subheader("Resultados da Recria")
-            res1, res2, res3 = st.columns(3)
-            res1.metric("GMD Médio", f"{gmd:.3f} kg/dia")
-            res2.metric("Arrobas Ganhas", f"{arrobas_ganhas:.2f} @")
-            res3.metric("Custo Total / Cabeça", f"R$ {custo_total:.2f}")
-
-            res4, res5 = st.columns(2)
-            res4.metric("Custo da @ Ganha", f"R$ {custo_arroba_ganha:.2f}")
-            res5.metric("Ponto de Equilíbrio (Break-Even)", f"R$ {break_even:.2f} / @")
-
-# ==========================================
-# ABA 2: CONFINAMENTO
-# ==========================================
-with aba_confinamento:
-    st.header("Simulador de Confinamento")
+def simular_recria(raca: RacaInfo, peso_inicial: float, custo_diaria: float = 4.50) -> dict:
+    """Calcula indicadores para a fase de recria."""
+    if not raca.suporta_recria:
+        return {"erro": f"A raça {raca.nome} não é recomendada para sistema de recria a pasto."}
     
-    col1, col2 = st.columns(2)
-    with col1:
-        peso_entrada_conf = st.number_input("Peso de Entrada (kg)", value=380.0, step=10.0, key="conf_p_ent")
-        peso_meta_conf = st.number_input("Peso Meta Abate (kg)", value=540.0, step=10.0, key="conf_p_meta")
-        gmd_conf = st.number_input("GMD Esperado (kg/dia)", value=1.50, step=0.1, key="conf_gmd")
-        valor_animal_conf = st.number_input("Valor de Entrada do Animal (R$)", value=3500.0, step=50.0, key="conf_val")
+    if peso_inicial >= raca.peso_recria_ideal:
+        return {"erro": "Peso inicial já atingiu ou superou o peso ideal de revenda da recria."}
+        
+    ganho_necessario = raca.peso_recria_ideal - peso_inicial
+    dias_recria = int(ganho_necessario / raca.gmd_recria_alvo)
+    custo_total_fase = dias_recria * custo_diaria
+    
+    return {
+        "peso_final_ideal_kg": raca.peso_recria_ideal,
+        "peso_final_ideal_arrobas": round(raca.peso_recria_ideal / 30, 2), # Considera 50% rendimento base para recria
+        "gmd_alvo_kg_dia": raca.gmd_recria_alvo,
+        "dias_estimados": dias_recria,
+        "custo_diario_estimado_rs": custo_diaria,
+        "custo_total_alimentar_rs": round(custo_total_fase, 2),
+        "alimentacao_recomendada": "Pastagem de boa qualidade + Suplementação Proteica (0,1% a 0,3% do PV) na seca ou Mineral Adensado nas águas."
+    }
 
-    with col2:
-        custo_dieta = st.number_input("Custo Diário da Dieta (R$)", value=14.50, step=0.5, key="conf_dieta")
-        custo_operacional = st.number_input("Custo Diário Operacional (R$)", value=2.00, step=0.5, key="conf_op")
-        rend_conf = st.number_input("Rendimento Carcaça Abate (%)", value=54.0, step=0.5, key="conf_rend")
+def simular_confinamento(raca: RacaInfo, peso_inicial: float, custo_diaria: float = 14.00) -> dict:
+    """Calcula indicadores para a fase de confinamento total."""
+    if peso_inicial >= raca.peso_confinamento_ideal:
+        return {"erro": "Peso inicial já atingiu o peso ideal de abate para esta raça."}
+        
+    ganho_necessario = raca.peso_confinamento_ideal - peso_inicial
+    dias_confinamento = int(ganho_necessario / raca.gmd_confinamento_alvo)
+    custo_total_fase = dias_confinamento * custo_diaria
+    
+    # Rendimento padrão de carcaça em confinamento = ~54%
+    arrobas_carcaca = (raca.peso_confinamento_ideal * 0.54) / 15
+    
+    return {
+        "peso_final_abate_kg": raca.peso_confinamento_ideal,
+        "arrobas_carcaca_estimadas": round(arrobas_carcaca, 2),
+        "gmd_alvo_kg_dia": raca.gmd_confinamento_alvo,
+        "dias_estimados": dias_confinamento,
+        "custo_diario_estimado_rs": custo_diaria,
+        "custo_total_alimentar_rs": round(custo_total_fase, 2),
+        "alimentacao_recomendada": "Dieta TMR (80% Concentrado / 20% Volumoso): Silagem de milho/sorgo + milho moído, farelo de soja e núcleo com ureia/monensina."
+    }
 
-    if st.button("Calcular Confinamento", type="primary"):
-        if gmd_conf <= 0:
-            st.error("O GMD Esperado deve ser maior que zero.")
-        else:
-            ganho_peso = peso_meta_conf - peso_entrada_conf
-            dias_cocho = ganho_peso / gmd_conf
-            custo_diario_total = custo_dieta + custo_operacional
-            custo_cocho = custo_diario_total * dias_cocho
-            custo_total_conf = valor_animal_conf + custo_cocho
-            arrobas_finais_conf = (peso_meta_conf * (rend_conf / 100)) / 15
-            break_even_conf = custo_total_conf / arrobas_finais_conf if arrobas_finais_conf > 0 else 0
+# 3. MOTOR PRINCIPAL DA APLICAÇÃO (SIMULADOR DE ENTRADA DO USUÁRIO)
+def processar_simulacao(
+    chave_raca: str,
+    peso_inicial: float,
+    preco_compra_arroba: float,
+    preco_venda_arroba: float,
+    custo_diaria_recria: float = 4.50,
+    custo_diaria_confinamento: float = 14.00
+) -> dict:
+    
+    raca = BANCO_RACAS.get(chave_raca.lower())
+    if not raca:
+        return {"erro": "Raça não encontrada na base de dados."}
+        
+    analise_agio = calcular_agio(preco_compra_arroba, preco_venda_arroba)
+    dados_recria = simular_recria(raca, peso_inicial, custo_diaria_recria)
+    dados_confinamento = simular_confinamento(raca, peso_inicial, custo_diaria_confinamento)
+    
+    return {
+        "raca_selecionada": raca.nome,
+        "analise_agio": analise_agio,
+        "modulo_recria": dados_recria,
+        "modulo_confinamento": dados_confinamento
+    }
 
-            st.markdown("---")
-            st.subheader("Resultados do Confinamento")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Dias de Cocho", f"{int(dias_cocho)} dias")
-            c2.metric("Custo Total do Cocho", f"R$ {custo_cocho:.2f}")
-            c3.metric("@ Finais de Carcaça", f"{arrobas_finais_conf:.2f} @")
 
-            st.metric("Ponto de Equilíbrio Mínimo (Break-Even)", f"R$ {break_even_conf:.2f} / @")
+# ==========================================
+# TESTE DO CÓDIGO
+# ==========================================
+if __name__ == "__main__":
+    # Exemplo: Nelore comprado a 240 R$/@ com venda projetada a 230 R$/@ pesando 220kg
+    resultado = processar_simulacao(
+        chave_raca="nelore",
+        peso_inicial=220.0,
+        preco_compra_arroba=240.0,
+        preco_venda_arroba=230.0
+    )
+    
+    # Exibição simplificada em console
+    import json
+    print(json.dumps(resultado, indent=4, ensure_ascii=False))
