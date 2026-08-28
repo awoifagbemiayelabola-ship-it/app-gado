@@ -107,5 +107,5 @@ with col_right:
     # Alertas específicos sobre Ágio e GMD
     if agio_pct > 20:
         st.info("⚠️ **Atenção ao Ágio:** Você está pagando um ágio alto (> 20%) na compra do animal. Garanta que o ganho de peso compensará esse custo inicial.")
-    if gmd < 0.5 e fase == "ENGORDA":
+    if gmd < 0.5 and fase == "ENGORDA":
         st.info("⚠️ **GMD Baixo para Engorda:** O ganho médio diário está baixo para a fase de engorda. Considere aumentar a oferta nutricional.")
